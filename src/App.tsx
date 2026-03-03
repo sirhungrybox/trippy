@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import type { User } from 'firebase/auth'
 import type { Tab, Trip, TripData } from './types'
 import { eachDayOfInterval, parseISO, format } from 'date-fns'
-import { isFirebaseConfigured, onAuth, signInWithGoogle, logOut, saveTrip, subscribeUserTrips, deleteTrip as fbDeleteTrip, loadTrip } from './firebase'
+import { isFirebaseConfigured, onAuth, signInWithGoogle, handleRedirectResult, logOut, saveTrip, subscribeUserTrips, deleteTrip as fbDeleteTrip, loadTrip } from './firebase'
 import { useTripStore } from './hooks/useTripStore'
 import { BottomNav } from './components/BottomNav'
 import { TopBar } from './components/TopBar'
@@ -73,9 +73,22 @@ export default function App() {
     }
   }, [user, tripData])
 
+  const [loginError, setLoginError] = useState<string | null>(null)
+
   const handleLogin = async () => {
-    try { await signInWithGoogle() } catch (e) { console.error('Login failed:', e) }
+    setLoginError(null)
+    try {
+      await signInWithGoogle()
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string }
+      setLoginError(err.message || 'Sign in failed. Please try again.')
+    }
   }
+
+  // Handle redirect result (for mobile fallback)
+  useEffect(() => {
+    handleRedirectResult().catch(() => {})
+  }, [])
 
   const handleLogout = async () => {
     await logOut()
@@ -138,7 +151,7 @@ export default function App() {
 
   // Not logged in + not viewing shared trip → login screen
   if (!user && !activeTripId) {
-    return <LoginScreen onLogin={handleLogin} />
+    return <LoginScreen onLogin={handleLogin} error={loginError} />
   }
 
   // Not logged in but viewing a shared trip

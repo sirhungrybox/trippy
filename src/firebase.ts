@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, type User } from 'firebase/auth'
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, type User } from 'firebase/auth'
 import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where, deleteDoc, getDocs } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -27,7 +27,22 @@ if (isFirebaseConfigured) {
 // Auth
 export async function signInWithGoogle() {
   if (!auth || !googleProvider) throw new Error('Firebase not configured')
-  return signInWithPopup(auth, googleProvider)
+  try {
+    // Try popup first (works on desktop)
+    return await signInWithPopup(auth, googleProvider)
+  } catch (e: unknown) {
+    const err = e as { code?: string }
+    // If popup blocked or failed, fall back to redirect (works on mobile)
+    if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+      return signInWithRedirect(auth, googleProvider)
+    }
+    throw e
+  }
+}
+
+export async function handleRedirectResult() {
+  if (!auth) return null
+  return getRedirectResult(auth)
 }
 
 export async function logOut() {
