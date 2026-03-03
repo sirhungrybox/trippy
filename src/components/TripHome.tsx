@@ -1,54 +1,26 @@
 import { useState } from 'react'
 import { format, differenceInDays } from 'date-fns'
-import { Plus, Trash2, Compass, ArrowRight, LogOut, Share2, Check } from 'lucide-react'
-import type { User } from 'firebase/auth'
+import { Plus, Trash2, Compass, ArrowRight } from 'lucide-react'
 import type { Trip } from '../types'
 
 const emojiOptions = ['🌍', '✈️', '🏔️', '🏖️', '🗼', '🌴', '🎒', '🚗', '🛳️', '🏕️', '🎿', '🌸']
 
-export function TripHome({ user, trips, onCreate, onSelect, onDelete, onLogout }: {
-  user: User; trips: Trip[]; onCreate: (t: Omit<Trip, 'ownerId' | 'ownerName' | 'ownerPhoto'>) => void
-  onSelect: (id: string) => void; onDelete: (id: string) => void; onLogout: () => void
+export function TripHome({ trips, onCreate, onSelect, onDelete }: {
+  trips: Trip[]; onCreate: (t: Trip) => void; onSelect: (id: string) => void; onDelete: (id: string) => void
 }) {
   const [showCreate, setShowCreate] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
-
-  const shareTrip = (tripId: string) => {
-    const url = `${window.location.origin}/trip/${tripId}`
-    navigator.clipboard.writeText(url)
-    setCopiedId(tripId)
-    setTimeout(() => setCopiedId(null), 2000)
-  }
 
   return (
-    <div className="min-h-screen px-5 py-8 sm:py-12" style={{ background: 'var(--color-surface-base)' }}>
+    <div className="min-h-screen px-5 py-10 sm:py-16" style={{ background: 'var(--color-surface-base)' }}>
       <div className="max-w-lg mx-auto">
-        {/* User header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            {user.photoURL ? (
-              <img src={user.photoURL} alt="" className="w-10 h-10 rounded-full" />
-            ) : (
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: 'var(--color-accent-muted)', color: 'var(--color-accent)' }}>
-                {(user.displayName || 'U')[0]}
-              </div>
-            )}
-            <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>{user.displayName || 'Traveler'}</p>
-              <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{user.email}</p>
-            </div>
-          </div>
-          <button onClick={onLogout} className="p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors"
-            style={{ color: 'var(--color-text-faint)' }}>
-            <LogOut size={18} />
-          </button>
-        </div>
-
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>Your Trips</h1>
-          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>{trips.length} trip{trips.length !== 1 ? 's' : ''}</p>
+        <div className="text-center mb-10">
+          <div className="w-14 h-14 rounded-2xl mx-auto mb-5 flex items-center justify-center" style={{ background: 'var(--color-accent-muted)', border: '1px solid var(--color-accent-border)' }}>
+            <Compass size={28} style={{ color: 'var(--color-accent)' }} />
+          </div>
+          <h1 className="font-serif text-3xl sm:text-4xl font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>Trippy</h1>
+          <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>Your trips, all in one place.</p>
         </div>
 
         {/* Trip list */}
@@ -85,23 +57,16 @@ export function TripHome({ user, trips, onCreate, onSelect, onDelete, onLogout }
                     <ArrowRight size={18} style={{ color: 'var(--color-text-faint)' }} />
                   </button>
 
-                  {/* Actions */}
                   <div className="px-4 pb-3 flex items-center gap-2" style={{ borderTop: '1px solid var(--color-surface-overlay)' }}>
-                    <button onClick={() => shareTrip(trip.id)}
-                      className="flex items-center gap-1.5 text-xs py-1.5 min-h-[32px] transition-colors"
-                      style={{ color: copiedId === trip.id ? '#34D399' : 'var(--color-accent)' }}>
-                      {copiedId === trip.id ? <><Check size={12} /> Link copied!</> : <><Share2 size={12} /> Share</>}
-                    </button>
-                    <span style={{ color: 'var(--color-text-faint)' }}>·</span>
                     {confirmDelete === trip.id ? (
                       <div className="flex items-center gap-2 anim-fade-in">
-                        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Delete?</span>
+                        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>Delete this trip?</span>
                         <button onClick={() => onDelete(trip.id)} className="text-xs text-red-400 font-medium min-h-[32px]">Yes</button>
                         <button onClick={() => setConfirmDelete(null)} className="text-xs min-h-[32px]" style={{ color: 'var(--color-text-muted)' }}>No</button>
                       </div>
                     ) : (
                       <button onClick={() => setConfirmDelete(trip.id)}
-                        className="flex items-center gap-1 text-xs py-1.5 min-h-[32px] transition-colors"
+                        className="flex items-center gap-1 text-xs py-1.5 min-h-[32px]"
                         style={{ color: 'var(--color-text-faint)' }}>
                         <Trash2 size={12} /> Remove
                       </button>
@@ -132,12 +97,16 @@ export function TripHome({ user, trips, onCreate, onSelect, onDelete, onLogout }
         ) : (
           <CreateForm onCreate={(t) => { onCreate(t); setShowCreate(false) }} onCancel={() => setShowCreate(false)} />
         )}
+
+        <p className="text-center text-[11px] mt-8" style={{ color: 'var(--color-text-faint)' }}>
+          {trips.length} trip{trips.length !== 1 ? 's' : ''} saved on this device.
+        </p>
       </div>
     </div>
   )
 }
 
-function CreateForm({ onCreate, onCancel }: { onCreate: (t: Omit<Trip, 'ownerId' | 'ownerName' | 'ownerPhoto'>) => void; onCancel: () => void }) {
+function CreateForm({ onCreate, onCancel }: { onCreate: (t: Trip) => void; onCancel: () => void }) {
   const [name, setName] = useState('')
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
@@ -183,7 +152,7 @@ function CreateForm({ onCreate, onCancel }: { onCreate: (t: Omit<Trip, 'ownerId'
             style={{ background: 'var(--color-surface-overlay)', border: '1px solid var(--color-text-faint)', color: 'var(--color-text-primary)' }} />
         </div>
       </div>
-      <button onClick={() => { if (canCreate) onCreate({ id: crypto.randomUUID(), name: name.trim(), startDate: start, endDate: end, coverEmoji: emoji, countries: [] }) }}
+      <button onClick={() => { if (canCreate) onCreate({ id: crypto.randomUUID(), name: name.trim(), startDate: start, endDate: end, coverEmoji: emoji, countries: [], ownerId: '', ownerName: '', ownerPhoto: '' }) }}
         disabled={!canCreate}
         className="w-full py-3.5 font-semibold rounded-xl text-sm transition-all active:scale-[0.98] disabled:opacity-30"
         style={{ background: canCreate ? 'var(--color-accent)' : 'var(--color-text-faint)', color: '#0B0A09' }}>

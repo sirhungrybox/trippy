@@ -5,7 +5,7 @@ import type { TripData, TripDay, Activity } from '../types'
 
 const dayColors = ['#E8B94A', '#60A5FA', '#34D399', '#F87171', '#A78BFA', '#FB923C', '#2DD4BF', '#F472B6']
 
-export function Itinerary({ tripData, update, isViewOnly }: { tripData: TripData; update: (p: Partial<TripData>) => void; isViewOnly?: boolean }) {
+export function Itinerary({ tripData, update }: { tripData: TripData; update: (p: Partial<TripData>) => void }) {
   const days = tripData.days
   const setDays = (fn: (prev: TripDay[]) => TripDay[]) => update({ days: fn(days) })
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -103,13 +103,11 @@ export function Itinerary({ tripData, update, isViewOnly }: { tripData: TripData
                           onRemove={() => removeActivity(day.id, act.id)} />
                       ))}
                     </div>
-                    {!isViewOnly && (
-                      <button onClick={() => addActivity(day.id)}
-                        className="flex items-center gap-1.5 text-xs mt-3 py-2 min-h-[44px] transition-colors"
-                        style={{ color: 'var(--color-accent)' }}>
-                        <Plus size={16} /> Add activity
-                      </button>
-                    )}
+                    <button onClick={() => addActivity(day.id)}
+                      className="flex items-center gap-1.5 text-xs mt-3 py-2 min-h-[44px] transition-colors"
+                      style={{ color: 'var(--color-accent)' }}>
+                      <Plus size={16} /> Add activity
+                    </button>
                   </div>
 
                   <div>

@@ -5,7 +5,7 @@ import type { BudgetItem, TripData } from '../types'
 const defaultCategories = ['Flights', 'Accommodation', 'Transport', 'Food & Dining', 'Activities', 'Shopping', 'Insurance', 'Other']
 const currencies = ['USD', 'EUR', 'GBP', 'CHF', 'AED', 'SEK', 'JPY', 'AUD', 'CAD', 'INR', 'THB']
 
-export function Budget({ tripData, update, isViewOnly }: { tripData: TripData; update: (p: Partial<TripData>) => void; isViewOnly?: boolean }) {
+export function Budget({ tripData, update }: { tripData: TripData; update: (p: Partial<TripData>) => void }) {
   const items = tripData.budget
   const setItems = (fn: (prev: BudgetItem[]) => BudgetItem[]) => update({ budget: fn(items) })
   const [showAdd, setShowAdd] = useState(false)
@@ -33,13 +33,11 @@ export function Budget({ tripData, update, isViewOnly }: { tripData: TripData; u
           <h1 className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Budget</h1>
           <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>{items.length} expenses tracked</p>
         </div>
-        {!isViewOnly && (
-          <button onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold rounded-xl active:scale-[0.97] min-h-[44px]"
-            style={{ background: 'var(--color-accent)', color: '#0B0A09' }}>
-            <Plus size={16} /> Add
-          </button>
-        )}
+        <button onClick={() => setShowAdd(true)}
+          className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold rounded-xl active:scale-[0.97] min-h-[44px]"
+          style={{ background: 'var(--color-accent)', color: '#0B0A09' }}>
+          <Plus size={16} /> Add
+        </button>
       </div>
 
       {/* Summary */}

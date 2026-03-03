@@ -4,7 +4,7 @@ import type { ChecklistItem, TripData } from '../types'
 
 const defaultGroups = ['Documents', 'Packing', 'Bookings', 'Tech & Gear', 'Before Departure']
 
-export function Checklist({ tripData, update, isViewOnly }: { tripData: TripData; update: (p: Partial<TripData>) => void; isViewOnly?: boolean }) {
+export function Checklist({ tripData, update }: { tripData: TripData; update: (p: Partial<TripData>) => void }) {
   const items = tripData.checklist
   const setItems = (fn: (prev: ChecklistItem[]) => ChecklistItem[]) => update({ checklist: fn(items) })
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -44,13 +44,11 @@ export function Checklist({ tripData, update, isViewOnly }: { tripData: TripData
           <h1 className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Checklist</h1>
           <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>Track your preparation</p>
         </div>
-        {!isViewOnly && (
-          <button onClick={() => setShowAddGroup(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold rounded-xl active:scale-[0.97] min-h-[44px]"
-            style={{ background: 'var(--color-accent)', color: '#0B0A09' }}>
-            <Plus size={16} /> Group
-          </button>
-        )}
+        <button onClick={() => setShowAddGroup(true)}
+          className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold rounded-xl active:scale-[0.97] min-h-[44px]"
+          style={{ background: 'var(--color-accent)', color: '#0B0A09' }}>
+          <Plus size={16} /> Group
+        </button>
       </div>
 
       {/* Progress */}

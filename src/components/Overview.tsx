@@ -3,8 +3,8 @@ import { CalendarDays, Wallet, CheckSquare, Plus, Plane, ArrowRight, Trash2, Sha
 import type { Tab, Trip, TripData, Flight } from '../types'
 import { useState } from 'react'
 
-export function Overview({ trip, tripData, update, onTab, isViewOnly }: {
-  trip: Trip; tripData: TripData; update: (p: Partial<TripData>) => void; onTab: (t: Tab) => void; isViewOnly?: boolean
+export function Overview({ trip, tripData, update, onTab }: {
+  trip: Trip; tripData: TripData; update: (p: Partial<TripData>) => void; onTab: (t: Tab) => void
 }) {
   const [showAddFlight, setShowAddFlight] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -47,13 +47,6 @@ export function Overview({ trip, tripData, update, onTab, isViewOnly }: {
               {copied ? <><Check size={12} /> Copied</> : <><Share2 size={12} /> Share trip</>}
             </button>
           </div>
-          {/* Owner info */}
-          {trip.ownerPhoto && (
-            <div className="flex items-center gap-2 mt-4 pt-4" style={{ borderTop: '1px solid var(--color-surface-overlay)' }}>
-              <img src={trip.ownerPhoto} alt="" className="w-6 h-6 rounded-full" />
-              <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>by {trip.ownerName}</span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -80,17 +73,15 @@ export function Overview({ trip, tripData, update, onTab, isViewOnly }: {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>Flights</h2>
-          {!isViewOnly && (
-            <button onClick={() => setShowAddFlight(true)} className="flex items-center gap-1.5 px-3 py-2 text-xs min-h-[44px]" style={{ color: 'var(--color-accent)' }}>
-              <Plus size={16} /> Add
-            </button>
-          )}
+                    <button onClick={() => setShowAddFlight(true)} className="flex items-center gap-1.5 px-3 py-2 text-xs min-h-[44px]" style={{ color: 'var(--color-accent)' }}>
+            <Plus size={16} /> Add
+          </button>
         </div>
 
         {flights.length === 0 && !showAddFlight && (
           <div className="w-full py-10 rounded-xl text-sm text-center" style={{ border: '1.5px dashed var(--color-text-faint)', color: 'var(--color-text-faint)' }}>
             <Plane size={24} className="mx-auto mb-2 opacity-40" />
-            {isViewOnly ? 'No flights added' : 'Add your first flight'}
+            Add your first flight
           </div>
         )}
 
@@ -107,12 +98,10 @@ export function Overview({ trip, tripData, update, onTab, isViewOnly }: {
                     <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{f.depDate}</p>
                   </div>
                 </div>
-                {!isViewOnly && (
-                  <button onClick={() => removeFlight(f.id)} className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center active:text-red-400"
-                    style={{ color: 'var(--color-text-faint)' }}>
-                    <Trash2 size={16} />
-                  </button>
-                )}
+                                <button onClick={() => removeFlight(f.id)} className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center active:text-red-400"
+                  style={{ color: 'var(--color-text-faint)' }}>
+                  <Trash2 size={16} />
+                </button>
               </div>
               <div className="flex items-center gap-4 mt-3 pl-11">
                 <div className="text-right">
@@ -131,7 +120,7 @@ export function Overview({ trip, tripData, update, onTab, isViewOnly }: {
           ))}
         </div>
 
-        {showAddFlight && !isViewOnly && <AddFlightModal onAdd={addFlight} onClose={() => setShowAddFlight(false)} />}
+        {showAddFlight && <AddFlightModal onAdd={addFlight} onClose={() => setShowAddFlight(false)} />}
       </div>
     </div>
   )
