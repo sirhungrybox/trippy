@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/trip/:id", "destination": "/" },
+    { "source": "/(.*)", "destination": "/" }
+  ]
+}

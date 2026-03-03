@@ -1,59 +1,198 @@
-import { useState } from 'react'
-import type { Tab, Trip } from './types'
-import { useSyncedState } from './hooks/useSyncedState'
-import { isFirebaseConfigured } from './firebase'
+import { useState, useEffect } from 'react'
+import type { User } from 'firebase/auth'
+import type { Tab, Trip, TripData } from './types'
+import { eachDayOfInterval, parseISO, format } from 'date-fns'
+import { isFirebaseConfigured, onAuth, signInWithGoogle, logOut, saveTrip, subscribeUserTrips, deleteTrip as fbDeleteTrip, loadTrip } from './firebase'
+import { useTripStore } from './hooks/useTripStore'
 import { BottomNav } from './components/BottomNav'
 import { TopBar } from './components/TopBar'
 import { TripHome } from './components/TripHome'
+import { LoginScreen } from './components/LoginScreen'
 import { Overview } from './components/Overview'
 import { Itinerary } from './components/Itinerary'
 import { Budget } from './components/Budget'
 import { Checklist } from './components/Checklist'
+import { Loader2 } from 'lucide-react'
 
 export default function App() {
-  const [trips, setTrips] = useSyncedState<Trip[]>('all-trips', [])
-  const [activeTripId, setActiveTripId] = useSyncedState<string | null>('active-trip-id', null)
+  const [user, setUser] = useState<User | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [trips, setTrips] = useState<Trip[]>([])
+  const [activeTripId, setActiveTripId] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('overview')
+  const [isViewOnly, setIsViewOnly] = useState(false)
 
-  const activeTrip = trips.find((t) => t.id === activeTripId) || null
+  const { data: tripData, loading: tripLoading, update: updateTrip } = useTripStore(activeTripId)
 
-  const createTrip = (trip: Trip) => {
-    setTrips((prev) => [...prev, trip])
+  // Check URL for shared trip link on mount
+  useEffect(() => {
+    const path = window.location.pathname
+    const match = path.match(/^\/trip\/(.+)$/)
+    if (match) {
+      setActiveTripId(match[1])
+      setIsViewOnly(true) // Will be updated once we know the user
+    }
+    // Also handle hash-based
+    const hash = window.location.hash
+    const hashMatch = hash.match(/^#\/trip\/(.+)$/)
+    if (hashMatch) {
+      setActiveTripId(hashMatch[1])
+      setIsViewOnly(true)
+    }
+  }, [])
+
+  // Auth listener
+  useEffect(() => {
+    if (!isFirebaseConfigured) { setAuthLoading(false); return }
+    const unsub = onAuth((u) => {
+      setUser(u)
+      setAuthLoading(false)
+      // If viewing a shared trip, check if we're the owner
+      if (u && activeTripId) {
+        loadTrip(activeTripId).then((d) => {
+          if (d && (d.meta as Trip)?.ownerId === u.uid) setIsViewOnly(false)
+        })
+      }
+    })
+    return unsub
+  }, [activeTripId])
+
+  // Load user's trips from Firestore
+  useEffect(() => {
+    if (!user || !isFirebaseConfigured) return
+    const unsub = subscribeUserTrips(user.uid, (raw) => {
+      setTrips(raw.map((r) => (r.meta as Trip) || r) as Trip[])
+    })
+    return unsub
+  }, [user])
+
+  // Update isViewOnly when we know both user and trip
+  useEffect(() => {
+    if (user && tripData?.meta) {
+      setIsViewOnly(tripData.meta.ownerId !== user.uid)
+    }
+  }, [user, tripData])
+
+  const handleLogin = async () => {
+    try { await signInWithGoogle() } catch (e) { console.error('Login failed:', e) }
+  }
+
+  const handleLogout = async () => {
+    await logOut()
+    setUser(null)
+    setTrips([])
+    setActiveTripId(null)
+  }
+
+  const createTrip = async (meta: Omit<Trip, 'ownerId' | 'ownerName' | 'ownerPhoto'>) => {
+    if (!user) return
+    const trip: Trip = {
+      ...meta,
+      ownerId: user.uid,
+      ownerName: user.displayName || '',
+      ownerPhoto: user.photoURL || '',
+    }
+    const days = eachDayOfInterval({ start: parseISO(trip.startDate), end: parseISO(trip.endDate) }).map((d, i) => ({
+      id: `day-${i}`, date: format(d, 'yyyy-MM-dd'), title: `Day ${i + 1}`, location: '', countryEmoji: '',
+      activities: [], accommodation: '', notes: '',
+    }))
+    const tripData: TripData = { meta: trip, days, budget: [], checklist: [], flights: [] }
+
+    if (isFirebaseConfigured) {
+      await saveTrip(trip.id, tripData as unknown as Record<string, unknown>)
+    } else {
+      localStorage.setItem(`trip-${trip.id}`, JSON.stringify(tripData))
+    }
     setActiveTripId(trip.id)
+    setIsViewOnly(false)
     setTab('overview')
   }
 
-  const deleteTrip = (id: string) => {
-    setTrips((prev) => prev.filter((t) => t.id !== id))
-    // Clean up this trip's data from localStorage
-    const keys = [`trip-days-${id}`, `trip-budget-${id}`, `trip-checklist-${id}`, `trip-flights-${id}`]
-    keys.forEach((k) => localStorage.removeItem(k))
+  const deleteTrip = async (id: string) => {
+    if (isFirebaseConfigured) {
+      await fbDeleteTrip(id)
+    } else {
+      localStorage.removeItem(`trip-${id}`)
+    }
     if (activeTripId === id) setActiveTripId(null)
   }
 
-  const goHome = () => { setActiveTripId(null); setTab('overview') }
-
-  // No active trip — show trip selector
-  if (!activeTrip) {
-    return <TripHome trips={trips} onCreate={createTrip} onSelect={(id) => { setActiveTripId(id); setTab('overview') }} onDelete={deleteTrip} />
+  const goHome = () => {
+    setActiveTripId(null)
+    setIsViewOnly(false)
+    setTab('overview')
+    // Clear shared trip URL
+    if (window.location.pathname !== '/' || window.location.hash) {
+      window.history.pushState(null, '', '/')
+    }
   }
 
+  // Loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-surface-base)' }}>
+        <Loader2 size={28} className="animate-spin" style={{ color: 'var(--color-accent)' }} />
+      </div>
+    )
+  }
+
+  // Not logged in + not viewing shared trip → login screen
+  if (!user && !activeTripId) {
+    return <LoginScreen onLogin={handleLogin} />
+  }
+
+  // Not logged in but viewing a shared trip
+  if (!user && activeTripId && tripData) {
+    return (
+      <div className="min-h-screen" style={{ background: 'var(--color-surface-base)', color: 'var(--color-text-primary)' }}>
+        <TopBar trip={tripData.meta} tab={tab} onTab={setTab} onBack={goHome} isViewOnly onLogin={handleLogin} />
+        <main className="pt-13 pb-20 sm:pb-6">
+          <SharedTripView tripData={tripData} tab={tab} onTab={setTab} />
+        </main>
+        <BottomNav tab={tab} onTab={setTab} />
+      </div>
+    )
+  }
+
+  // Logged in, no active trip → trip home
+  if (user && !activeTripId) {
+    return <TripHome user={user} trips={trips} onCreate={createTrip} onSelect={(id) => { setActiveTripId(id); setIsViewOnly(false); setTab('overview') }} onDelete={deleteTrip} onLogout={handleLogout} />
+  }
+
+  // Loading trip data
+  if (tripLoading || !tripData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-surface-base)' }}>
+        <Loader2 size={28} className="animate-spin" style={{ color: 'var(--color-accent)' }} />
+      </div>
+    )
+  }
+
+  // Active trip view
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-surface-base)', color: 'var(--color-text-primary)' }}>
-      <TopBar trip={activeTrip} tab={tab} onTab={setTab} onBack={goHome} />
+      <TopBar trip={tripData.meta} tab={tab} onTab={setTab} onBack={goHome} isViewOnly={isViewOnly} />
       <main className="pt-13 pb-20 sm:pb-6">
         <div className="anim-fade-in" key={tab}>
-          {tab === 'overview' && <Overview trip={activeTrip} onTab={setTab} />}
-          {tab === 'itinerary' && <Itinerary trip={activeTrip} />}
-          {tab === 'budget' && <Budget tripId={activeTrip.id} />}
-          {tab === 'checklist' && <Checklist tripId={activeTrip.id} />}
+          {tab === 'overview' && <Overview trip={tripData.meta} tripData={tripData} update={updateTrip} onTab={setTab} isViewOnly={isViewOnly} />}
+          {tab === 'itinerary' && <Itinerary tripData={tripData} update={updateTrip} isViewOnly={isViewOnly} />}
+          {tab === 'budget' && <Budget tripData={tripData} update={updateTrip} isViewOnly={isViewOnly} />}
+          {tab === 'checklist' && <Checklist tripData={tripData} update={updateTrip} isViewOnly={isViewOnly} />}
         </div>
       </main>
       <BottomNav tab={tab} onTab={setTab} />
-      <div className="fixed bottom-21 sm:bottom-4 right-4 flex items-center gap-1.5 text-[10px] z-10" style={{ color: 'var(--color-text-faint)' }}>
-        <div className={`w-1.5 h-1.5 rounded-full ${isFirebaseConfigured ? 'bg-emerald-500 anim-pulse' : ''}`} style={!isFirebaseConfigured ? { background: 'var(--color-text-faint)' } : {}} />
-        {isFirebaseConfigured ? 'Synced' : 'Local'}
-      </div>
+    </div>
+  )
+}
+
+function SharedTripView({ tripData, tab, onTab }: { tripData: TripData; tab: Tab; onTab: (t: Tab) => void }) {
+  const noop = () => {}
+  return (
+    <div className="anim-fade-in" key={tab}>
+      {tab === 'overview' && <Overview trip={tripData.meta} tripData={tripData} update={noop} onTab={onTab} isViewOnly />}
+      {tab === 'itinerary' && <Itinerary tripData={tripData} update={noop} isViewOnly />}
+      {tab === 'budget' && <Budget tripData={tripData} update={noop} isViewOnly />}
+      {tab === 'checklist' && <Checklist tripData={tripData} update={noop} isViewOnly />}
     </div>
   )
 }

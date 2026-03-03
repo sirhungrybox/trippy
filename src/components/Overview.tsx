@@ -1,12 +1,14 @@
 import { differenceInDays, format, isAfter, isBefore } from 'date-fns'
-import { CalendarDays, Wallet, CheckSquare, Plus, Plane, ArrowRight, Trash2 } from 'lucide-react'
-import type { Tab, Trip, Flight } from '../types'
-import { useSyncedState } from '../hooks/useSyncedState'
+import { CalendarDays, Wallet, CheckSquare, Plus, Plane, ArrowRight, Trash2, Share2, Check } from 'lucide-react'
+import type { Tab, Trip, TripData, Flight } from '../types'
 import { useState } from 'react'
 
-export function Overview({ trip, onTab }: { trip: Trip; onTab: (t: Tab) => void }) {
-  const [flights, setFlights] = useSyncedState<Flight[]>(`trip-flights-${trip.id}`, [])
+export function Overview({ trip, tripData, update, onTab, isViewOnly }: {
+  trip: Trip; tripData: TripData; update: (p: Partial<TripData>) => void; onTab: (t: Tab) => void; isViewOnly?: boolean
+}) {
   const [showAddFlight, setShowAddFlight] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const flights = tripData.flights
 
   const start = new Date(trip.startDate)
   const end = new Date(trip.endDate)
@@ -16,14 +18,18 @@ export function Overview({ trip, onTab }: { trip: Trip; onTab: (t: Tab) => void 
   const isActive = isAfter(today, start) && isBefore(today, end)
   const currentDay = isActive ? differenceInDays(today, start) + 1 : 0
 
-  const addFlight = (f: Omit<Flight, 'id'>) => { setFlights((prev) => [...prev, { ...f, id: crypto.randomUUID() }]); setShowAddFlight(false) }
-  const removeFlight = (id: string) => setFlights((prev) => prev.filter((f) => f.id !== id))
+  const addFlight = (f: Omit<Flight, 'id'>) => { update({ flights: [...flights, { ...f, id: crypto.randomUUID() }] }); setShowAddFlight(false) }
+  const removeFlight = (id: string) => update({ flights: flights.filter((f) => f.id !== id) })
+
+  const share = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/trip/${trip.id}`)
+    setCopied(true); setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-5 sm:py-8 space-y-5">
       {/* Hero */}
       <div className="relative rounded-2xl overflow-hidden hero-accent topo-pattern" style={{ border: '1px solid var(--color-surface-overlay)' }}>
-        {/* Top accent line */}
         <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent 0%, var(--color-accent) 30%, var(--color-accent) 70%, transparent 100%)' }} />
         <div className="relative p-6 sm:p-10">
           <p className="text-xs font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent)' }}>
@@ -33,30 +39,38 @@ export function Overview({ trip, onTab }: { trip: Trip; onTab: (t: Tab) => void 
           <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
             {format(start, 'MMM d')} — {format(end, 'MMM d, yyyy')} · {totalDays} days
           </p>
-          {/* Stats row */}
           <div className="flex gap-3 mt-5">
             <StatPill label="Days" value={String(totalDays)} />
             <StatPill label="Flights" value={String(flights.length)} />
+            <button onClick={share} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs min-h-[36px] transition-colors"
+              style={{ background: 'var(--color-accent-glow)', border: '1px solid var(--color-accent-border)', color: copied ? '#34D399' : 'var(--color-accent)' }}>
+              {copied ? <><Check size={12} /> Copied</> : <><Share2 size={12} /> Share trip</>}
+            </button>
           </div>
+          {/* Owner info */}
+          {trip.ownerPhoto && (
+            <div className="flex items-center gap-2 mt-4 pt-4" style={{ borderTop: '1px solid var(--color-surface-overlay)' }}>
+              <img src={trip.ownerPhoto} alt="" className="w-6 h-6 rounded-full" />
+              <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>by {trip.ownerName}</span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Quick links */}
       <div className="grid grid-cols-3 gap-3">
         {([
-          { tab: 'itinerary' as Tab, icon: <CalendarDays size={22} />, label: 'Itinerary', sub: 'Day-by-day' },
-          { tab: 'budget' as Tab, icon: <Wallet size={22} />, label: 'Budget', sub: 'Expenses' },
-          { tab: 'checklist' as Tab, icon: <CheckSquare size={22} />, label: 'Checklist', sub: 'Prep list' },
+          { tab: 'itinerary' as Tab, icon: <CalendarDays size={22} />, label: 'Itinerary', sub: `${tripData.days.length} days` },
+          { tab: 'budget' as Tab, icon: <Wallet size={22} />, label: 'Budget', sub: `${tripData.budget.length} items` },
+          { tab: 'checklist' as Tab, icon: <CheckSquare size={22} />, label: 'Checklist', sub: `${tripData.checklist.filter(c => c.checked).length}/${tripData.checklist.length}` },
         ]).map((item) => (
           <button key={item.tab} onClick={() => onTab(item.tab)}
             className="flex flex-col items-start gap-3 p-4 rounded-xl transition-all text-left min-h-[80px] active:scale-[0.97]"
-            style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-surface-overlay)' }}
-            onTouchStart={(e) => (e.currentTarget.style.background = 'var(--color-surface-overlay)')}
-            onTouchEnd={(e) => (e.currentTarget.style.background = 'var(--color-surface-raised)')}>
+            style={{ background: 'var(--color-surface-raised)', border: '1px solid var(--color-surface-overlay)' }}>
             <span style={{ color: 'var(--color-accent)' }}>{item.icon}</span>
             <div>
               <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>{item.label}</p>
-              <p className="text-xs hidden sm:block" style={{ color: 'var(--color-text-faint)' }}>{item.sub}</p>
+              <p className="text-xs" style={{ color: 'var(--color-text-faint)' }}>{item.sub}</p>
             </div>
           </button>
         ))}
@@ -66,19 +80,18 @@ export function Overview({ trip, onTab }: { trip: Trip; onTab: (t: Tab) => void 
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>Flights</h2>
-          <button onClick={() => setShowAddFlight(true)} className="flex items-center gap-1.5 px-3 py-2 text-xs min-h-[44px] transition-colors"
-            style={{ color: 'var(--color-accent)' }}>
-            <Plus size={16} /> Add
-          </button>
+          {!isViewOnly && (
+            <button onClick={() => setShowAddFlight(true)} className="flex items-center gap-1.5 px-3 py-2 text-xs min-h-[44px]" style={{ color: 'var(--color-accent)' }}>
+              <Plus size={16} /> Add
+            </button>
+          )}
         </div>
 
         {flights.length === 0 && !showAddFlight && (
-          <button onClick={() => setShowAddFlight(true)}
-            className="w-full py-10 rounded-xl text-sm transition-all active:scale-[0.99]"
-            style={{ border: '1.5px dashed var(--color-text-faint)', color: 'var(--color-text-faint)' }}>
+          <div className="w-full py-10 rounded-xl text-sm text-center" style={{ border: '1.5px dashed var(--color-text-faint)', color: 'var(--color-text-faint)' }}>
             <Plane size={24} className="mx-auto mb-2 opacity-40" />
-            <span>Add your first flight</span>
-          </button>
+            {isViewOnly ? 'No flights added' : 'Add your first flight'}
+          </div>
         )}
 
         <div className="space-y-2">
@@ -94,10 +107,12 @@ export function Overview({ trip, onTab }: { trip: Trip; onTab: (t: Tab) => void 
                     <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{f.depDate}</p>
                   </div>
                 </div>
-                <button onClick={() => removeFlight(f.id)} className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors active:text-red-400"
-                  style={{ color: 'var(--color-text-faint)' }}>
-                  <Trash2 size={16} />
-                </button>
+                {!isViewOnly && (
+                  <button onClick={() => removeFlight(f.id)} className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center active:text-red-400"
+                    style={{ color: 'var(--color-text-faint)' }}>
+                    <Trash2 size={16} />
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-4 mt-3 pl-11">
                 <div className="text-right">
@@ -116,7 +131,7 @@ export function Overview({ trip, onTab }: { trip: Trip; onTab: (t: Tab) => void 
           ))}
         </div>
 
-        {showAddFlight && <AddFlightModal onAdd={addFlight} onClose={() => setShowAddFlight(false)} />}
+        {showAddFlight && !isViewOnly && <AddFlightModal onAdd={addFlight} onClose={() => setShowAddFlight(false)} />}
       </div>
     </div>
   )
@@ -161,13 +176,12 @@ function AddFlightModal({ onAdd, onClose }: { onAdd: (f: Omit<Flight, 'id'>) => 
             <Inp label="Arr. time" value={arrTime} onChange={setArrTime} placeholder="13:45" />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Inp label="Dep. date" value={depDate} onChange={setDepDate} placeholder="" type="date" />
-            <Inp label="Arr. date" value={arrDate} onChange={setArrDate} placeholder="" type="date" />
+            <Inp label="Dep. date" value={depDate} onChange={setDepDate} type="date" placeholder="" />
+            <Inp label="Arr. date" value={arrDate} onChange={setArrDate} type="date" placeholder="" />
           </div>
           <div className="flex gap-3 pt-2">
             <button onClick={() => onAdd({ airline, flightNumber: num, depCode, depTime, depDate, arrCode, arrTime, arrDate })}
-              className="flex-1 py-3 text-sm font-semibold rounded-xl active:scale-[0.98] transition-transform"
-              style={{ background: 'var(--color-accent)', color: '#0B0A09' }}>
+              className="flex-1 py-3 text-sm font-semibold rounded-xl active:scale-[0.98]" style={{ background: 'var(--color-accent)', color: '#0B0A09' }}>
               Add flight
             </button>
             <button onClick={onClose} className="px-5 py-3 text-sm" style={{ color: 'var(--color-text-muted)' }}>Cancel</button>
@@ -185,10 +199,9 @@ function Inp({ label, value, onChange, placeholder, type = 'text', autoFocus }: 
     <div>
       <label className="text-xs block mb-1" style={{ color: 'var(--color-text-muted)' }}>{label}</label>
       <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} autoFocus={autoFocus}
-        className="w-full rounded-xl px-3.5 py-3 text-sm outline-none [color-scheme:dark] transition-colors"
+        className="w-full rounded-xl px-3.5 py-3 text-sm outline-none [color-scheme:dark]"
         style={{ background: 'var(--color-surface-overlay)', border: '1px solid var(--color-text-faint)', color: 'var(--color-text-primary)' }}
-        onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')}
-        onBlur={(e) => (e.target.style.borderColor = 'var(--color-text-faint)')} />
+        onFocus={(e) => (e.target.style.borderColor = 'var(--color-accent)')} onBlur={(e) => (e.target.style.borderColor = 'var(--color-text-faint)')} />
     </div>
   )
 }

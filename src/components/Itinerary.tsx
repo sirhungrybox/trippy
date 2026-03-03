@@ -1,21 +1,13 @@
 import { useState } from 'react'
-import { format, eachDayOfInterval, parseISO, isToday } from 'date-fns'
+import { format, parseISO, isToday } from 'date-fns'
 import { Plus, Trash2, ChevronDown, ChevronUp, Check, MapPin, Bed } from 'lucide-react'
-import type { Trip, TripDay, Activity } from '../types'
-import { useSyncedState } from '../hooks/useSyncedState'
+import type { TripData, TripDay, Activity } from '../types'
 
 const dayColors = ['#E8B94A', '#60A5FA', '#34D399', '#F87171', '#A78BFA', '#FB923C', '#2DD4BF', '#F472B6']
 
-function buildEmptyDays(trip: Trip): TripDay[] {
-  const days = eachDayOfInterval({ start: parseISO(trip.startDate), end: parseISO(trip.endDate) })
-  return days.map((d, i) => ({
-    id: `day-${i}`, date: format(d, 'yyyy-MM-dd'), title: `Day ${i + 1}`, location: '', countryEmoji: '',
-    activities: [], accommodation: '', notes: '',
-  }))
-}
-
-export function Itinerary({ trip }: { trip: Trip }) {
-  const [days, setDays] = useSyncedState<TripDay[]>(`trip-days-${trip.id}`, buildEmptyDays(trip))
+export function Itinerary({ tripData, update, isViewOnly }: { tripData: TripData; update: (p: Partial<TripData>) => void; isViewOnly?: boolean }) {
+  const days = tripData.days
+  const setDays = (fn: (prev: TripDay[]) => TripDay[]) => update({ days: fn(days) })
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const toggle = (id: string) => setExpanded((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })
@@ -111,11 +103,13 @@ export function Itinerary({ trip }: { trip: Trip }) {
                           onRemove={() => removeActivity(day.id, act.id)} />
                       ))}
                     </div>
-                    <button onClick={() => addActivity(day.id)}
-                      className="flex items-center gap-1.5 text-xs mt-3 py-2 min-h-[44px] transition-colors"
-                      style={{ color: 'var(--color-accent)' }}>
-                      <Plus size={16} /> Add activity
-                    </button>
+                    {!isViewOnly && (
+                      <button onClick={() => addActivity(day.id)}
+                        className="flex items-center gap-1.5 text-xs mt-3 py-2 min-h-[44px] transition-colors"
+                        style={{ color: 'var(--color-accent)' }}>
+                        <Plus size={16} /> Add activity
+                      </button>
+                    )}
                   </div>
 
                   <div>

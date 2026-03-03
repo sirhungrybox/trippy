@@ -5,6 +5,17 @@ export interface Trip {
   endDate: string
   coverEmoji: string
   countries: string[]
+  ownerId: string
+  ownerName: string
+  ownerPhoto: string
+}
+
+export interface TripData {
+  meta: Trip
+  days: TripDay[]
+  budget: BudgetItem[]
+  checklist: ChecklistItem[]
+  flights: Flight[]
 }
 
 export interface TripDay {
