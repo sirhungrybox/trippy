@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /trips/{tripId} {
+      // Anyone can read (for shareable links)
+      allow read: if true;
+
+      // Only authenticated owner can create
+      allow create: if request.auth != null;
+
+      // Only owner can update or delete
+      allow update, delete: if request.auth != null
+        && resource.data.meta.ownerId == request.auth.uid;
+    }
+
+    // Block everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
