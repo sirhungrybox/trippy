@@ -5,8 +5,8 @@ import { useSyncedState } from '../hooks/useSyncedState'
 
 const defaultGroups = ['Documents', 'Packing', 'Bookings', 'Tech & Gear', 'Before Departure']
 
-export function Checklist() {
-  const [items, setItems] = useSyncedState<ChecklistItem[]>('trip-checklist', [])
+export function Checklist({ tripId }: { tripId: string }) {
+  const [items, setItems] = useSyncedState<ChecklistItem[]>(`trip-checklist-${tripId}`, [])
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [addingTo, setAddingTo] = useState<string | null>(null)
   const [newText, setNewText] = useState('')

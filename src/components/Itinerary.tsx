@@ -15,7 +15,7 @@ function buildEmptyDays(trip: Trip): TripDay[] {
 }
 
 export function Itinerary({ trip }: { trip: Trip }) {
-  const [days, setDays] = useSyncedState<TripDay[]>('trip-days', buildEmptyDays(trip))
+  const [days, setDays] = useSyncedState<TripDay[]>(`trip-days-${trip.id}`, buildEmptyDays(trip))
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const toggle = (id: string) => setExpanded((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n })

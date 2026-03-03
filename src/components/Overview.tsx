@@ -5,7 +5,7 @@ import { useSyncedState } from '../hooks/useSyncedState'
 import { useState } from 'react'
 
 export function Overview({ trip, onTab }: { trip: Trip; onTab: (t: Tab) => void }) {
-  const [flights, setFlights] = useSyncedState<Flight[]>('trip-flights', [])
+  const [flights, setFlights] = useSyncedState<Flight[]>(`trip-flights-${trip.id}`, [])
   const [showAddFlight, setShowAddFlight] = useState(false)
 
   const start = new Date(trip.startDate)

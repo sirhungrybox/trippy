@@ -6,8 +6,8 @@ import { useSyncedState } from '../hooks/useSyncedState'
 const defaultCategories = ['Flights', 'Accommodation', 'Transport', 'Food & Dining', 'Activities', 'Shopping', 'Insurance', 'Other']
 const currencies = ['USD', 'EUR', 'GBP', 'CHF', 'AED', 'SEK', 'JPY', 'AUD', 'CAD', 'INR', 'THB']
 
-export function Budget() {
-  const [items, setItems] = useSyncedState<BudgetItem[]>('trip-budget', [])
+export function Budget({ tripId }: { tripId: string }) {
+  const [items, setItems] = useSyncedState<BudgetItem[]>(`trip-budget-${tripId}`, [])
   const [showAdd, setShowAdd] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [filterCat, setFilterCat] = useState('all')
